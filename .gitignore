@@ -1,0 +1,11 @@
+# Large datasets: do not commit (see data/README.md for download steps)
+data/*.csv
+data/*.zip
+data/raw/
+# Secrets
+.env
+*.pem
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
