@@ -1,6 +1,6 @@
 # MIT 8103 Advanced Database Systems: Portfolio
 
-**Student:** <Your Name> | **Student ID:** <ID> | **Session:** 2026/2027, First Semester
+**Student:** <Odigie Osimen Peter> | **Student ID:** <ID> | **Session:** 2026/2027, First Semester
 
 ## 1. Selected Case Study
 
