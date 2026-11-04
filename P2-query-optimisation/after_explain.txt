@@ -1,0 +1,436 @@
+mysql> source C:/Users/UJAH/advanced-database-portfolio/P2-query-optimisation/explain_queries.sql
+Database changed
++-------------------------------------------------------------------------------------------+
+| label                                                                                     |
++-------------------------------------------------------------------------------------------+
+| === Q1: Canceled orders per month in 2018 (filter on status + date range, then group) === |
++-------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Sort: order_month  (actual time=3.79..3.79 rows=10 loops=1)
+    -> Table scan on <temporary>  (actual time=3.62..3.63 rows=10 loops=1)
+        -> Aggregate using temporary table  (actual time=3.62..3.62 rows=10 loops=1)
+            -> Filter: ((orders.order_status = 'canceled') and (orders.order_purchase_timestamp >= TIMESTAMP'2018-01-01 00:00:00') and (orders.order_purchase_timestamp < TIMESTAMP'2019-01-01 00:00:00'))  (cost=76.3 rows=334) (actual time=0.281..2.05 rows=334 loops=1)
+                -> Covering index range scan on orders using idx_orders_status_purchase over (order_status = 'canceled' AND '2018-01-01 00:00:00' <= order_purchase_timestamp < '2019-01-01 00:00:00')  (cost=76.3 rows=334) (actual time=0.264..1.39 rows=334 loops=1)
+
+1 row in set (0.09 sec)
+
++------------------------------------------------------------------------------------------+
+| label                                                                                    |
++------------------------------------------------------------------------------------------+
+| === Q2: Top 10 cities in Sao Paulo state by number of orders (filter + join + group) === |
++------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Limit: 10 row(s)  (actual time=4568..4568 rows=10 loops=1)
+    -> Sort: orders DESC, limit input to 10 row(s) per chunk  (actual time=4568..4568 rows=10 loops=1)
+        -> Stream results  (cost=56446 rows=324) (actual time=444..4567 rows=629 loops=1)
+            -> Group aggregate: count(o.order_id)  (cost=56446 rows=324) (actual time=444..4566 rows=629 loops=1)
+                -> Nested loop inner join  (cost=51183 rows=52625) (actual time=0.32..4534 rows=41746 loops=1)
+                    -> Covering index lookup on c using idx_customers_state_city (customer_state='SP')  (cost=8552 rows=52625) (actual time=0.287..69.4 rows=41746 loops=1)
+                    -> Covering index lookup on o using fk_orders_customer (customer_id=c.customer_id)  (cost=0.71 rows=1) (actual time=0.104..0.106 rows=1 loops=41746)
+
+1 row in set (4.60 sec)
+
++----------------------------------------------------------------------------------------------------+
+| label                                                                                              |
++----------------------------------------------------------------------------------------------------+
+| === Q3: Revenue by product category, top 10 (3-table join over ALL order items: control query) === |
++----------------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Limit: 10 row(s)  (actual time=19297..19297 rows=10 loops=1)
+    -> Sort: revenue DESC, limit input to 10 row(s) per chunk  (actual time=19297..19297 rows=10 loops=1)
+        -> Table scan on <temporary>  (actual time=19297..19297 rows=74 loops=1)
+            -> Aggregate using temporary table  (actual time=19297..19297 rows=74 loops=1)
+                -> Nested loop inner join  (cost=98623 rows=106041) (actual time=90.2..18570 rows=112650 loops=1)
+                    -> Nested loop left join  (cost=39706 rows=32795) (actual time=57.1..4133 rows=32951 loops=1)
+                        -> Table scan on p  (cost=3632 rows=32795) (actual time=39.3..3688 rows=32951 loops=1)
+                        -> Single-row index lookup on t using PRIMARY (product_category_name=p.product_category_name)  (cost=1 rows=1) (actual time=0.0123..0.0125 rows=0.981 loops=32951)
+                    -> Index lookup on i using fk_items_product (product_id=p.product_id)  (cost=1.47 rows=3.23) (actual time=0.311..0.436 rows=3.42 loops=32951)
+
+1 row in set (19.30 sec)
+
++-------------------------------------------------------------------------------------------------+
+| label                                                                                           |
++-------------------------------------------------------------------------------------------------+
+| === Q4: One-star reviews per month (low-selectivity filter, candidate for a covering index) === |
++-------------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Sort: review_month  (actual time=84.6..84.7 rows=23 loops=1)
+    -> Table scan on <temporary>  (actual time=84.5..84.6 rows=23 loops=1)
+        -> Aggregate using temporary table  (actual time=84.5..84.5 rows=23 loops=1)
+            -> Covering index lookup on order_reviews using idx_reviews_score_created (review_score=1)  (cost=2989 rows=22766) (actual time=0.0991..70.1 rows=11424 loops=1)
+
+1 row in set (0.09 sec)
+
++-------------------------------------------------------------------------------------------------+
+| label                                                                                           |
++-------------------------------------------------------------------------------------------------+
+| === Q5: Average coordinates for one zip code (point lookup in the 1M-row geolocation table) === |
++-------------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Aggregate: avg(geolocation.geolocation_lng), avg(geolocation.geolocation_lat), count(0)  (cost=22.1 rows=1) (actual time=0.165..0.165 rows=1 loops=1)
+    -> Covering index lookup on geolocation using idx_geo_zip_coords (geolocation_zip_code_prefix='01151')  (cost=11.8 rows=103) (actual time=0.0878..0.116 rows=103 loops=1)
+
+1 row in set (0.00 sec)
+
++------------------------------------------------------------------------------------------------+
+| label                                                                                          |
++------------------------------------------------------------------------------------------------+
+| === Q6: Average coordinates for every seller in Rio de Janeiro state (join to geolocation) === |
++------------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Table scan on <temporary>  (actual time=565..565 rows=171 loops=1)
+    -> Aggregate using temporary table  (actual time=565..565 rows=171 loops=1)
+        -> Nested loop inner join  (cost=2430 rows=17094) (actual time=67.1..418 rows=35643 loops=1)
+            -> Filter: (s.seller_state = 'RJ')  (cost=328 rows=308) (actual time=67..325 rows=171 loops=1)
+                -> Table scan on s  (cost=328 rows=3075) (actual time=67..324 rows=3095 loops=1)
+            -> Covering index lookup on g using idx_geo_zip_coords (geolocation_zip_code_prefix=s.seller_zip_code_prefix)  (cost=1.3 rows=55.6) (actual time=0.234..0.508 rows=208 loops=171)
+
+1 row in set (0.57 sec)
+
++---------------------------------------------------------------------------------+
+| label                                                                           |
++---------------------------------------------------------------------------------+
+| === Q7: Top 3 sellers by revenue in each state (CTE + window function RANK) === |
++---------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Sort: ranked.seller_state, ranked.revenue_rank  (cost=2.6..2.6 rows=0) (actual time=662..662 rows=57 loops=1)
+    -> Filter: (ranked.revenue_rank <= 3)  (cost=2.5..2.5 rows=0) (actual time=661..662 rows=57 loops=1)
+        -> Table scan on ranked  (cost=2.5..2.5 rows=0) (actual time=661..662 rows=3095 loops=1)
+            -> Materialize  (cost=0..0 rows=0) (actual time=661..661 rows=3095 loops=1)
+                -> Window aggregate: rank() OVER (PARTITION BY seller_revenue.seller_state ORDER BY seller_revenue.revenue desc )   (actual time=657..660 rows=3095 loops=1)
+                    -> Sort: seller_revenue.seller_state, seller_revenue.revenue DESC  (cost=2.6..2.6 rows=0) (actual time=657..658 rows=3095 loops=1)
+                        -> Table scan on seller_revenue  (cost=2.5..2.5 rows=0) (actual time=629..629 rows=3095 loops=1)
+                            -> Materialize CTE seller_revenue  (cost=0..0 rows=0) (actual time=629..629 rows=3095 loops=1)
+                                -> Table scan on <temporary>  (actual time=627..628 rows=3095 loops=1)
+                                    -> Aggregate using temporary table  (actual time=627..627 rows=3095 loops=1)
+                                        -> Nested loop inner join  (cost=15907 rows=95405) (actual time=0.173..418 rows=112650 loops=1)
+                                            -> Table scan on s  (cost=313 rows=3075) (actual time=0.123..2.94 rows=3095 loops=1)
+                                            -> Covering index lookup on i using idx_items_seller_price (seller_id=s.seller_id)  (cost=1.97 rows=31) (actual time=0.0213..0.13 rows=36.4 loops=3095)
+
+1 row in set (0.68 sec)
+
++---------------------------------------------------------------------------------------+
+| label                                                                                 |
++---------------------------------------------------------------------------------------+
+| === Q8: How many customers placed 1, 2, 3... orders (group on customer_unique_id) === |
++---------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Sort: per_customer.orders_per_customer  (actual time=1365..1365 rows=9 loops=1)
+    -> Table scan on <temporary>  (actual time=1365..1365 rows=9 loops=1)
+        -> Aggregate using temporary table  (actual time=1365..1365 rows=9 loops=1)
+            -> Table scan on per_customer  (cost=68562..69761 rows=95680) (actual time=1316..1330 rows=96096 loops=1)
+                -> Materialize  (cost=68562..68562 rows=95680) (actual time=1316..1316 rows=96096 loops=1)
+                    -> Group aggregate: count(0)  (cost=58994 rows=95680) (actual time=0.246..1229 rows=96096 loops=1)
+                        -> Nested loop inner join  (cost=48469 rows=105250) (actual time=0.222..1104 rows=99441 loops=1)
+                            -> Covering index scan on c using idx_customers_unique  (cost=11632 rows=105250) (actual time=0.193..171 rows=99441 loops=1)
+                            -> Covering index lookup on o using fk_orders_customer (customer_id=c.customer_id)  (cost=0.25 rows=1) (actual time=0.00671..0.00884 rows=1 loops=99441)
+
+1 row in set (1.37 sec)
+
+mysql> source C:/Users/UJAH/advanced-database-portfolio/P2-query-optimisation/explain_queries.sql
+Database changed
++-------------------------------------------------------------------------------------------+
+| label                                                                                     |
++-------------------------------------------------------------------------------------------+
+| === Q1: Canceled orders per month in 2018 (filter on status + date range, then group) === |
++-------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Sort: order_month  (actual time=1.23..1.23 rows=10 loops=1)
+    -> Table scan on <temporary>  (actual time=1.18..1.19 rows=10 loops=1)
+        -> Aggregate using temporary table  (actual time=1.18..1.18 rows=10 loops=1)
+            -> Filter: ((orders.order_status = 'canceled') and (orders.order_purchase_timestamp >= TIMESTAMP'2018-01-01 00:00:00') and (orders.order_purchase_timestamp < TIMESTAMP'2019-01-01 00:00:00'))  (cost=76.3 rows=334) (actual time=0.072..0.699 rows=334 loops=1)
+                -> Covering index range scan on orders using idx_orders_status_purchase over (order_status = 'canceled' AND '2018-01-01 00:00:00' <= order_purchase_timestamp < '2019-01-01 00:00:00')  (cost=76.3 rows=334) (actual time=0.0676..0.465 rows=334 loops=1)
+
+1 row in set (0.00 sec)
+
++------------------------------------------------------------------------------------------+
+| label                                                                                    |
++------------------------------------------------------------------------------------------+
+| === Q2: Top 10 cities in Sao Paulo state by number of orders (filter + join + group) === |
++------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Limit: 10 row(s)  (actual time=415..415 rows=10 loops=1)
+    -> Sort: orders DESC, limit input to 10 row(s) per chunk  (actual time=415..415 rows=10 loops=1)
+        -> Stream results  (cost=32234 rows=324) (actual time=0.521..414 rows=629 loops=1)
+            -> Group aggregate: count(o.order_id)  (cost=32234 rows=324) (actual time=0.517..414 rows=629 loops=1)
+                -> Nested loop inner join  (cost=26971 rows=52625) (actual time=0.158..390 rows=41746 loops=1)
+                    -> Covering index lookup on c using idx_customers_state_city (customer_state='SP')  (cost=8552 rows=52625) (actual time=0.137..40.5 rows=41746 loops=1)
+                    -> Covering index lookup on o using fk_orders_customer (customer_id=c.customer_id)  (cost=0.25 rows=1) (actual time=0.00613..0.00782 rows=1 loops=41746)
+
+1 row in set (0.42 sec)
+
++----------------------------------------------------------------------------------------------------+
+| label                                                                                              |
++----------------------------------------------------------------------------------------------------+
+| === Q3: Revenue by product category, top 10 (3-table join over ALL order items: control query) === |
++----------------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Limit: 10 row(s)  (actual time=1395..1395 rows=10 loops=1)
+    -> Sort: revenue DESC, limit input to 10 row(s) per chunk  (actual time=1395..1395 rows=10 loops=1)
+        -> Table scan on <temporary>  (actual time=1395..1395 rows=74 loops=1)
+            -> Aggregate using temporary table  (actual time=1395..1395 rows=74 loops=1)
+                -> Nested loop inner join  (cost=51960 rows=106041) (actual time=0.205..1112 rows=112650 loops=1)
+                    -> Nested loop left join  (cost=14846 rows=32795) (actual time=0.176..203 rows=32951 loops=1)
+                        -> Table scan on p  (cost=3368 rows=32795) (actual time=0.153..37.7 rows=32951 loops=1)
+                        -> Single-row index lookup on t using PRIMARY (product_category_name=p.product_category_name)  (cost=0.25 rows=1) (actual time=0.00455..0.0046 rows=0.981 loops=32951)
+                    -> Index lookup on i using fk_items_product (product_id=p.product_id)  (cost=0.808 rows=3.23) (actual time=0.0156..0.0266 rows=3.42 loops=32951)
+
+1 row in set (1.40 sec)
+
++-------------------------------------------------------------------------------------------------+
+| label                                                                                           |
++-------------------------------------------------------------------------------------------------+
+| === Q4: One-star reviews per month (low-selectivity filter, candidate for a covering index) === |
++-------------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Sort: review_month  (actual time=22.1..22.1 rows=23 loops=1)
+    -> Table scan on <temporary>  (actual time=22.1..22.1 rows=23 loops=1)
+        -> Aggregate using temporary table  (actual time=22.1..22.1 rows=23 loops=1)
+            -> Covering index lookup on order_reviews using idx_reviews_score_created (review_score=1)  (cost=2989 rows=22766) (actual time=0.0915..9.95 rows=11424 loops=1)
+
+1 row in set (0.02 sec)
+
++-------------------------------------------------------------------------------------------------+
+| label                                                                                           |
++-------------------------------------------------------------------------------------------------+
+| === Q5: Average coordinates for one zip code (point lookup in the 1M-row geolocation table) === |
++-------------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Aggregate: avg(geolocation.geolocation_lng), avg(geolocation.geolocation_lat), count(0)  (cost=22.1 rows=1) (actual time=0.163..0.163 rows=1 loops=1)
+    -> Covering index lookup on geolocation using idx_geo_zip_coords (geolocation_zip_code_prefix='01151')  (cost=11.8 rows=103) (actual time=0.0809..0.11 rows=103 loops=1)
+
+1 row in set (0.00 sec)
+
++------------------------------------------------------------------------------------------------+
+| label                                                                                          |
++------------------------------------------------------------------------------------------------+
+| === Q6: Average coordinates for every seller in Rio de Janeiro state (join to geolocation) === |
++------------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Table scan on <temporary>  (actual time=150..150 rows=171 loops=1)
+    -> Aggregate using temporary table  (actual time=150..150 rows=171 loops=1)
+        -> Nested loop inner join  (cost=2415 rows=17094) (actual time=0.219..45.7 rows=35643 loops=1)
+            -> Filter: (s.seller_state = 'RJ')  (cost=313 rows=308) (actual time=0.156..3.21 rows=171 loops=1)
+                -> Table scan on s  (cost=313 rows=3075) (actual time=0.149..2.69 rows=3095 loops=1)
+            -> Covering index lookup on g using idx_geo_zip_coords (geolocation_zip_code_prefix=s.seller_zip_code_prefix)  (cost=1.3 rows=55.6) (actual time=0.0457..0.224 rows=208 loops=171)
+
+1 row in set (0.15 sec)
+
++---------------------------------------------------------------------------------+
+| label                                                                           |
++---------------------------------------------------------------------------------+
+| === Q7: Top 3 sellers by revenue in each state (CTE + window function RANK) === |
++---------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Sort: ranked.seller_state, ranked.revenue_rank  (cost=2.6..2.6 rows=0) (actual time=438..438 rows=57 loops=1)
+    -> Filter: (ranked.revenue_rank <= 3)  (cost=2.5..2.5 rows=0) (actual time=437..437 rows=57 loops=1)
+        -> Table scan on ranked  (cost=2.5..2.5 rows=0) (actual time=437..437 rows=3095 loops=1)
+            -> Materialize  (cost=0..0 rows=0) (actual time=437..437 rows=3095 loops=1)
+                -> Window aggregate: rank() OVER (PARTITION BY seller_revenue.seller_state ORDER BY seller_revenue.revenue desc )   (actual time=433..436 rows=3095 loops=1)
+                    -> Sort: seller_revenue.seller_state, seller_revenue.revenue DESC  (cost=2.6..2.6 rows=0) (actual time=433..434 rows=3095 loops=1)
+                        -> Table scan on seller_revenue  (cost=2.5..2.5 rows=0) (actual time=426..426 rows=3095 loops=1)
+                            -> Materialize CTE seller_revenue  (cost=0..0 rows=0) (actual time=426..426 rows=3095 loops=1)
+                                -> Table scan on <temporary>  (actual time=424..425 rows=3095 loops=1)
+                                    -> Aggregate using temporary table  (actual time=424..424 rows=3095 loops=1)
+                                        -> Nested loop inner join  (cost=15899 rows=95405) (actual time=0.152..223 rows=112650 loops=1)
+                                            -> Table scan on s  (cost=313 rows=3075) (actual time=0.113..2.77 rows=3095 loops=1)
+                                            -> Covering index lookup on i using idx_items_seller_price (seller_id=s.seller_id)  (cost=1.97 rows=31) (actual time=0.0165..0.0673 rows=36.4 loops=3095)
+
+1 row in set (0.44 sec)
+
++---------------------------------------------------------------------------------------+
+| label                                                                                 |
++---------------------------------------------------------------------------------------+
+| === Q8: How many customers placed 1, 2, 3... orders (group on customer_unique_id) === |
++---------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Sort: per_customer.orders_per_customer  (actual time=1258..1258 rows=9 loops=1)
+    -> Table scan on <temporary>  (actual time=1258..1258 rows=9 loops=1)
+        -> Aggregate using temporary table  (actual time=1258..1258 rows=9 loops=1)
+            -> Table scan on per_customer  (cost=68573..69772 rows=95680) (actual time=1208..1222 rows=96096 loops=1)
+                -> Materialize  (cost=68573..68573 rows=95680) (actual time=1208..1208 rows=96096 loops=1)
+                    -> Group aggregate: count(0)  (cost=59005 rows=95680) (actual time=0.227..1122 rows=96096 loops=1)
+                        -> Nested loop inner join  (cost=48480 rows=105250) (actual time=0.203..998 rows=99441 loops=1)
+                            -> Covering index scan on c using idx_customers_unique  (cost=11643 rows=105250) (actual time=0.176..79.8 rows=99441 loops=1)
+                            -> Covering index lookup on o using fk_orders_customer (customer_id=c.customer_id)  (cost=0.25 rows=1) (actual time=0.00662..0.00872 rows=1 loops=99441)
+
+1 row in set (1.26 sec)
+
+mysql> source C:/Users/UJAH/advanced-database-portfolio/P2-query-optimisation/explain_queries.sql
+Database changed
++-------------------------------------------------------------------------------------------+
+| label                                                                                     |
++-------------------------------------------------------------------------------------------+
+| === Q1: Canceled orders per month in 2018 (filter on status + date range, then group) === |
++-------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Sort: order_month  (actual time=1.13..1.13 rows=10 loops=1)
+    -> Table scan on <temporary>  (actual time=1.1..1.11 rows=10 loops=1)
+        -> Aggregate using temporary table  (actual time=1.1..1.1 rows=10 loops=1)
+            -> Filter: ((orders.order_status = 'canceled') and (orders.order_purchase_timestamp >= TIMESTAMP'2018-01-01 00:00:00') and (orders.order_purchase_timestamp < TIMESTAMP'2019-01-01 00:00:00'))  (cost=76.3 rows=334) (actual time=0.0674..0.653 rows=334 loops=1)
+                -> Covering index range scan on orders using idx_orders_status_purchase over (order_status = 'canceled' AND '2018-01-01 00:00:00' <= order_purchase_timestamp < '2019-01-01 00:00:00')  (cost=76.3 rows=334) (actual time=0.0636..0.427 rows=334 loops=1)
+
+1 row in set (0.00 sec)
+
++------------------------------------------------------------------------------------------+
+| label                                                                                    |
++------------------------------------------------------------------------------------------+
+| === Q2: Top 10 cities in Sao Paulo state by number of orders (filter + join + group) === |
++------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Limit: 10 row(s)  (actual time=414..414 rows=10 loops=1)
+    -> Sort: orders DESC, limit input to 10 row(s) per chunk  (actual time=414..414 rows=10 loops=1)
+        -> Stream results  (cost=32234 rows=324) (actual time=0.518..414 rows=629 loops=1)
+            -> Group aggregate: count(o.order_id)  (cost=32234 rows=324) (actual time=0.514..413 rows=629 loops=1)
+                -> Nested loop inner join  (cost=26971 rows=52625) (actual time=0.153..390 rows=41746 loops=1)
+                    -> Covering index lookup on c using idx_customers_state_city (customer_state='SP')  (cost=8552 rows=52625) (actual time=0.133..40.9 rows=41746 loops=1)
+                    -> Covering index lookup on o using fk_orders_customer (customer_id=c.customer_id)  (cost=0.25 rows=1) (actual time=0.00612..0.00781 rows=1 loops=41746)
+
+1 row in set (0.42 sec)
+
++----------------------------------------------------------------------------------------------------+
+| label                                                                                              |
++----------------------------------------------------------------------------------------------------+
+| === Q3: Revenue by product category, top 10 (3-table join over ALL order items: control query) === |
++----------------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Limit: 10 row(s)  (actual time=1380..1380 rows=10 loops=1)
+    -> Sort: revenue DESC, limit input to 10 row(s) per chunk  (actual time=1380..1380 rows=10 loops=1)
+        -> Table scan on <temporary>  (actual time=1380..1380 rows=74 loops=1)
+            -> Aggregate using temporary table  (actual time=1380..1380 rows=74 loops=1)
+                -> Nested loop inner join  (cost=51960 rows=106041) (actual time=0.188..1099 rows=112650 loops=1)
+                    -> Nested loop left join  (cost=14846 rows=32795) (actual time=0.161..201 rows=32951 loops=1)
+                        -> Table scan on p  (cost=3368 rows=32795) (actual time=0.138..37.4 rows=32951 loops=1)
+                        -> Single-row index lookup on t using PRIMARY (product_category_name=p.product_category_name)  (cost=0.25 rows=1) (actual time=0.0045..0.00455 rows=0.981 loops=32951)
+                    -> Index lookup on i using fk_items_product (product_id=p.product_id)  (cost=0.808 rows=3.23) (actual time=0.0154..0.0263 rows=3.42 loops=32951)
+
+1 row in set (1.38 sec)
+
++-------------------------------------------------------------------------------------------------+
+| label                                                                                           |
++-------------------------------------------------------------------------------------------------+
+| === Q4: One-star reviews per month (low-selectivity filter, candidate for a covering index) === |
++-------------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Sort: review_month  (actual time=21.7..21.7 rows=23 loops=1)
+    -> Table scan on <temporary>  (actual time=21.7..21.7 rows=23 loops=1)
+        -> Aggregate using temporary table  (actual time=21.7..21.7 rows=23 loops=1)
+            -> Covering index lookup on order_reviews using idx_reviews_score_created (review_score=1)  (cost=2989 rows=22766) (actual time=0.0826..10 rows=11424 loops=1)
+
+1 row in set (0.02 sec)
+
++-------------------------------------------------------------------------------------------------+
+| label                                                                                           |
++-------------------------------------------------------------------------------------------------+
+| === Q5: Average coordinates for one zip code (point lookup in the 1M-row geolocation table) === |
++-------------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Aggregate: avg(geolocation.geolocation_lng), avg(geolocation.geolocation_lat), count(0)  (cost=22.1 rows=1) (actual time=0.166..0.166 rows=1 loops=1)
+    -> Covering index lookup on geolocation using idx_geo_zip_coords (geolocation_zip_code_prefix='01151')  (cost=11.8 rows=103) (actual time=0.0853..0.116 rows=103 loops=1)
+
+1 row in set (0.00 sec)
+
++------------------------------------------------------------------------------------------------+
+| label                                                                                          |
++------------------------------------------------------------------------------------------------+
+| === Q6: Average coordinates for every seller in Rio de Janeiro state (join to geolocation) === |
++------------------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Table scan on <temporary>  (actual time=150..150 rows=171 loops=1)
+    -> Aggregate using temporary table  (actual time=150..150 rows=171 loops=1)
+        -> Nested loop inner join  (cost=2415 rows=17094) (actual time=0.223..45.6 rows=35643 loops=1)
+            -> Filter: (s.seller_state = 'RJ')  (cost=313 rows=308) (actual time=0.157..3.23 rows=171 loops=1)
+                -> Table scan on s  (cost=313 rows=3075) (actual time=0.15..2.69 rows=3095 loops=1)
+            -> Covering index lookup on g using idx_geo_zip_coords (geolocation_zip_code_prefix=s.seller_zip_code_prefix)  (cost=1.3 rows=55.6) (actual time=0.0461..0.222 rows=208 loops=171)
+
+1 row in set (0.15 sec)
+
++---------------------------------------------------------------------------------+
+| label                                                                           |
++---------------------------------------------------------------------------------+
+| === Q7: Top 3 sellers by revenue in each state (CTE + window function RANK) === |
++---------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Sort: ranked.seller_state, ranked.revenue_rank  (cost=2.6..2.6 rows=0) (actual time=428..428 rows=57 loops=1)
+    -> Filter: (ranked.revenue_rank <= 3)  (cost=2.5..2.5 rows=0) (actual time=428..428 rows=57 loops=1)
+        -> Table scan on ranked  (cost=2.5..2.5 rows=0) (actual time=428..428 rows=3095 loops=1)
+            -> Materialize  (cost=0..0 rows=0) (actual time=428..428 rows=3095 loops=1)
+                -> Window aggregate: rank() OVER (PARTITION BY seller_revenue.seller_state ORDER BY seller_revenue.revenue desc )   (actual time=424..427 rows=3095 loops=1)
+                    -> Sort: seller_revenue.seller_state, seller_revenue.revenue DESC  (cost=2.6..2.6 rows=0) (actual time=424..424 rows=3095 loops=1)
+                        -> Table scan on seller_revenue  (cost=2.5..2.5 rows=0) (actual time=417..417 rows=3095 loops=1)
+                            -> Materialize CTE seller_revenue  (cost=0..0 rows=0) (actual time=417..417 rows=3095 loops=1)
+                                -> Table scan on <temporary>  (actual time=415..416 rows=3095 loops=1)
+                                    -> Aggregate using temporary table  (actual time=415..415 rows=3095 loops=1)
+                                        -> Nested loop inner join  (cost=15899 rows=95405) (actual time=0.151..217 rows=112650 loops=1)
+                                            -> Table scan on s  (cost=313 rows=3075) (actual time=0.113..2.81 rows=3095 loops=1)
+                                            -> Covering index lookup on i using idx_items_seller_price (seller_id=s.seller_id)  (cost=1.97 rows=31) (actual time=0.0148..0.0655 rows=36.4 loops=3095)
+
+1 row in set (0.43 sec)
+
++---------------------------------------------------------------------------------------+
+| label                                                                                 |
++---------------------------------------------------------------------------------------+
+| === Q8: How many customers placed 1, 2, 3... orders (group on customer_unique_id) === |
++---------------------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+*************************** 1. row ***************************
+EXPLAIN: -> Sort: per_customer.orders_per_customer  (actual time=1269..1269 rows=9 loops=1)
+    -> Table scan on <temporary>  (actual time=1269..1269 rows=9 loops=1)
+        -> Aggregate using temporary table  (actual time=1269..1269 rows=9 loops=1)
+            -> Table scan on per_customer  (cost=68573..69772 rows=95680) (actual time=1219..1234 rows=96096 loops=1)
+                -> Materialize  (cost=68573..68573 rows=95680) (actual time=1219..1219 rows=96096 loops=1)
+                    -> Group aggregate: count(0)  (cost=59005 rows=95680) (actual time=0.218..1133 rows=96096 loops=1)
+                        -> Nested loop inner join  (cost=48480 rows=105250) (actual time=0.194..1007 rows=99441 loops=1)
+                            -> Covering index scan on c using idx_customers_unique  (cost=11643 rows=105250) (actual time=0.167..80.8 rows=99441 loops=1)
+                            -> Covering index lookup on o using fk_orders_customer (customer_id=c.customer_id)  (cost=0.25 rows=1) (actual time=0.00667..0.00879 rows=1 loops=99441)
+
+1 row in set (1.27 sec)
+
+mysql> notee
