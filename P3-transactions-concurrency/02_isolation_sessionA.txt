@@ -1,0 +1,201 @@
+mysql> source C:/Users/UJAH/advanced-database-portfolio/P3-transactions-concurrency/reset_demo.sql
+Database changed
+Query OK, 2 rows affected (0.46 sec)
+
+Query OK, 2 rows affected (1.62 sec)
+
+Query OK, 1 row affected (0.31 sec)
+Rows matched: 5  Changed: 1  Warnings: 0
+
++----------------------------------+----------+
+| product_id                       | quantity |
++----------------------------------+----------+
+| 00066f42aeeb9f3007548bb9d3f33c38 |       10 |
+| 00088930e925c41fd95ebfe695fd2655 |       10 |
+| 0009406fd7479715e4bef61dd91f2462 |       10 |
+| 000b8f95fcb9e0096488278317764d19 |       10 |
+| 000d9be29b5207b54e86aa1b1ac54872 |       10 |
++----------------------------------+----------+
+5 rows in set (0.00 sec)
+
+mysql> source C:/Users/UJAH/advanced-database-portfolio/P3-transactions-concurrency/session_init.sql
+Database changed
+Query OK, 0 rows affected (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
++----------------------------------+----------------------------------+-----------------+---------------+
+| product_1                        | product_2                        | isolation_level | autocommit_on |
++----------------------------------+----------------------------------+-----------------+---------------+
+| 00066f42aeeb9f3007548bb9d3f33c38 | 00088930e925c41fd95ebfe695fd2655 | REPEATABLE-READ |             1 |
++----------------------------------+----------------------------------+-----------------+---------------+
+1 row in set (0.00 sec)
+
+mysql> reset_demo.sql
+    -> 
+    -> SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+ERROR 1064 (42000): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'reset_demo.sql
+
+SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED' at line 1
+mysql> SELECT @@transaction_isolation;
++-------------------------+
+| @@transaction_isolation |
++-------------------------+
+| REPEATABLE-READ         |
++-------------------------+
+1 row in set (0.00 sec)
+
+mysql> START TRANSACTION;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> SELECT quantity FROM product_stock WHERE product_id = @p;
++----------+
+| quantity |
++----------+
+|       10 |
++----------+
+1 row in set (0.00 sec)
+
+mysql> SELECT quantity FROM product_stock WHERE product_id = @p;
++----------+
+| quantity |
++----------+
+|       10 |
++----------+
+1 row in set (0.02 sec)
+
+mysql> SELECT quantity FROM product_stock WHERE product_id = @p;
++----------+
+| quantity |
++----------+
+|       10 |
++----------+
+1 row in set (0.00 sec)
+
+mysql> COMMIT;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+Query OK, 0 rows affected (0.03 sec)
+
+mysql> SELECT @@transaction_isolation;
++-------------------------+
+| @@transaction_isolation |
++-------------------------+
+| READ-UNCOMMITTED        |
++-------------------------+
+1 row in set (0.00 sec)
+
+mysql> START TRANSACTION;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> SELECT quantity FROM product_stock WHERE product_id = @p;
++----------+
+| quantity |
++----------+
+|       10 |
++----------+
+1 row in set (0.00 sec)
+
+mysql> SELECT quantity FROM product_stock WHERE product_id = @p;
++----------+
+| quantity |
++----------+
+|        5 |
++----------+
+1 row in set (0.00 sec)
+
+mysql> SELECT quantity FROM product_stock WHERE product_id = @p;
++----------+
+| quantity |
++----------+
+|       10 |
++----------+
+1 row in set (0.00 sec)
+
+mysql> COMMIT;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> SELECT @@transaction_isolation;
++-------------------------+
+| @@transaction_isolation |
++-------------------------+
+| READ-COMMITTED          |
++-------------------------+
+1 row in set (0.00 sec)
+
+mysql> START TRANSACTION;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> SELECT quantity FROM product_stock WHERE product_id = @p;
++----------+
+| quantity |
++----------+
+|       10 |
++----------+
+1 row in set (0.00 sec)
+
+mysql> SELECT quantity FROM product_stock WHERE product_id = @p;
++----------+
+| quantity |
++----------+
+|        9 |
++----------+
+1 row in set (0.00 sec)
+
+mysql> COMMIT;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> SELECT @@transaction_isolation;
++-------------------------+
+| @@transaction_isolation |
++-------------------------+
+| REPEATABLE-READ         |
++-------------------------+
+1 row in set (0.00 sec)
+
+mysql> START TRANSACTION;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> SELECT quantity FROM product_stock WHERE product_id = @p;
++----------+
+| quantity |
++----------+
+|        9 |
++----------+
+1 row in set (0.00 sec)
+
+mysql> SELECT quantity FROM product_stock WHERE product_id = @p;
++----------+
+| quantity |
++----------+
+|        9 |
++----------+
+1 row in set (0.00 sec)
+
+mysql> SELECT quantity FROM product_stock WHERE product_id = @p FOR UPDATE;
++----------+
+| quantity |
++----------+
+|        8 |
++----------+
+1 row in set (0.00 sec)
+
+mysql> COMMIT;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> SELECT quantity FROM product_stock WHERE product_id = @p;
++----------+
+| quantity |
++----------+
+|        8 |
++----------+
+1 row in set (0.00 sec)
+
+mysql> notee

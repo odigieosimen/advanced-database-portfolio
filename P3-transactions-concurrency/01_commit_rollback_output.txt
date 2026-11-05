@@ -1,0 +1,137 @@
+mysql> source C:/Users/UJAH/advanced-database-portfolio/P3-transactions-concurrency/01_commit_rollback.sql
+Database changed
+Query OK, 0 rows affected (10.00 sec)
+
+Query OK, 0 rows affected (8.97 sec)
+
+Query OK, 0 rows affected (1.69 sec)
+Rows matched: 5  Changed: 0  Warnings: 0
+
+Query OK, 0 rows affected (5.85 sec)
+
+Query OK, 0 rows affected (5.07 sec)
+
+Query OK, 0 rows affected (1.02 sec)
+
++------------------------------------------------------------------------+
+| step                                                                   |
++------------------------------------------------------------------------+
+| === 1A. Successful order: COMMIT makes all three changes permanent === |
++------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
++---------------+
+| autocommit_on |
++---------------+
+|             1 |
++---------------+
+1 row in set (0.51 sec)
+
++--------------+
+| stock_before |
++--------------+
+|           10 |
++--------------+
+1 row in set (0.20 sec)
+
+Query OK, 0 rows affected (0.50 sec)
+
+Query OK, 1 row affected (15.27 sec)
+
+Query OK, 1 row affected (10.64 sec)
+
+Query OK, 1 row affected (2.29 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
++---------------------------------------+------------+-------+
+| moment                                | order_rows | stock |
++---------------------------------------+------------+-------+
+| inside the transaction, before COMMIT |          1 |     9 |
++---------------------------------------+------------+-------+
+1 row in set (1.90 sec)
+
+Query OK, 0 rows affected (5.82 sec)
+
++--------------+------------+-------+
+| moment       | order_rows | stock |
++--------------+------------+-------+
+| after COMMIT |          1 |     9 |
++--------------+------------+-------+
+1 row in set (0.00 sec)
+
++--------------------------------------------------------------------+
+| step                                                               |
++--------------------------------------------------------------------+
+| === 1B. Customer abandons checkout: ROLLBACK undoes everything === |
++--------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
+Query OK, 1 row affected (2.21 sec)
+
+Query OK, 1 row affected (2.29 sec)
+
+Query OK, 1 row affected (0.27 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
++-----------------------------------------+------------+-------+
+| moment                                  | order_rows | stock |
++-----------------------------------------+------------+-------+
+| inside the transaction, before ROLLBACK |          1 |     8 |
++-----------------------------------------+------------+-------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected (6.29 sec)
+
++----------------+------------+-------+
+| moment         | order_rows | stock |
++----------------+------------+-------+
+| after ROLLBACK |          0 |     9 |
++----------------+------------+-------+
+1 row in set (0.10 sec)
+
++-------------------------------------------------------------------------+
+| step                                                                    |
++-------------------------------------------------------------------------+
+| === 1C. Automatic rollback when an error happens (stored procedure) === |
++-------------------------------------------------------------------------+
+1 row in set (0.00 sec)
+
+Query OK, 0 rows affected, 1 warning (9.15 sec)
+
+Query OK, 0 rows affected (4.68 sec)
+
++--------------------------------------+
+| result                               |
++--------------------------------------+
+| ORDER PLACED - transaction committed |
++--------------------------------------+
+1 row in set (3.76 sec)
+
+Query OK, 0 rows affected (3.78 sec)
+
++-----------------------+------------+-------+
+| moment                | order_rows | stock |
++-----------------------+------------+-------+
+| after successful CALL |          1 |     8 |
++-----------------------+------------+-------+
+1 row in set (0.00 sec)
+
++----------------------------------------+
+| result                                 |
++----------------------------------------+
+| ORDER FAILED - transaction rolled back |
++----------------------------------------+
+1 row in set (9.93 sec)
+
+Query OK, 0 rows affected (10.17 sec)
+
++-------------------+------------+-----------+-------+
+| moment            | order_rows | item_rows | stock |
++-------------------+------------+-----------+-------+
+| after failed CALL |          0 |         0 |     8 |
++-------------------+------------+-----------+-------+
+1 row in set (0.38 sec)
+
+mysql> notee

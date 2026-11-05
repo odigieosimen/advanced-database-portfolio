@@ -1,0 +1,42 @@
+mysql> source C:/Users/UJAH/advanced-database-portfolio/P3-transactions-concurrency/session_init.sql
+Database changed
+Query OK, 0 rows affected (0.04 sec)
+
+Query OK, 0 rows affected (0.00 sec)
+
++----------------------------------+----------------------------------+-----------------+---------------+
+| product_1                        | product_2                        | isolation_level | autocommit_on |
++----------------------------------+----------------------------------+-----------------+---------------+
+| 00066f42aeeb9f3007548bb9d3f33c38 | 00088930e925c41fd95ebfe695fd2655 | REPEATABLE-READ |             1 |
++----------------------------------+----------------------------------+-----------------+---------------+
+1 row in set (0.05 sec)
+
+mysql> START TRANSACTION;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> UPDATE product_stock SET quantity = quantity - 5 WHERE product_id = @p;
+Query OK, 1 row affected (0.12 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> ROLLBACK;
+Query OK, 0 rows affected (0.28 sec)
+
+mysql> START TRANSACTION;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> UPDATE product_stock SET quantity = quantity - 5 WHERE product_id = @p;
+Query OK, 1 row affected (0.11 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> ROLLBACK;
+Query OK, 0 rows affected (0.35 sec)
+
+mysql> UPDATE product_stock SET quantity = quantity - 1 WHERE product_id = @p;
+Query OK, 1 row affected (0.22 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> UPDATE product_stock SET quantity = quantity - 1 WHERE product_id = @p;
+Query OK, 1 row affected (0.10 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> notee

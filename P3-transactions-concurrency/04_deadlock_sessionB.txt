@@ -1,0 +1,252 @@
+mysql> START TRANSACTION;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> UPDATE product_stock SET quantity = quantity - 1 WHERE product_id = @p2;
+Query OK, 1 row affected (0.04 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> UPDATE product_stock SET quantity = quantity - 1 WHERE product_id = @p;
+ERROR 1213 (40001): Deadlock found when trying to get lock; try restarting transaction
+mysql> SHOW ENGINE INNODB STATUS\G
+*************************** 1. row ***************************
+  Type: InnoDB
+  Name: 
+Status: 
+=====================================
+2026-11-05 08:03:01 0x3cc8 INNODB MONITOR OUTPUT
+=====================================
+Per second averages calculated from the last 15 seconds
+-----------------
+BACKGROUND THREAD
+-----------------
+srv_master_thread loops: 591 srv_active, 0 srv_shutdown, 49500 srv_idle
+srv_master_thread log flush and writes: 0
+----------
+SEMAPHORES
+----------
+OS WAIT ARRAY INFO: reservation count 17351
+OS WAIT ARRAY INFO: signal count 17077
+RW-shared spins 0, rounds 0, OS waits 0
+RW-excl spins 0, rounds 0, OS waits 0
+RW-sx spins 0, rounds 0, OS waits 0
+Spin rounds per wait: 0.00 RW-shared, 0.00 RW-excl, 0.00 RW-sx
+------------------------
+LATEST FOREIGN KEY ERROR
+------------------------
+2026-11-04 11:01:00 0x409c Transaction:
+TRANSACTION 2535, ACTIVE 28 sec inserting, thread declared inside InnoDB 1526
+mysql tables in use 1, locked 1
+1033 lock struct(s), heap size 123000, 88566 row lock(s), undo log entries 88492
+MySQL thread id 10, OS thread handle 16540, query id 228 localhost 127.0.0.1 root executing
+-- ---------- 4. orders ----------
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/olist_orders_dataset.csv'
+INTO TABLE orders
+CHARACTER SET utf8mb4
+FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"' ESCAPED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 LINES
+(order_id, customer_id, order_status, order_purchase_timestamp,
+ @approved, @carrier, @delivered, @estimated)
+SET order_approved_at             = NULLIF(@approved, ''),
+    order_delivered_carrier_date  = NULLIF(@carrier, ''),
+    order_delivered_customer_date = NULLIF(@delivered, ''),
+    order_estimated_delivery_date = NULLI
+Foreign key constraint fails for table `olist_marketplace`.`orders`:
+,
+  CONSTRAINT `fk_orders_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`customer_id`)
+Trying to add in child table, in index fk_orders_customer tuple:
+DATA TUPLE: 2 fields;
+ 0: len 32; hex 3036623839393965326662613161316662633838313732633030626138626337; asc 06b8999e2fba1a1fbc88172c00ba8bc7;;
+ 1: len 32; hex 3030653765653162303530623834393935373730373361656232613239376131; asc 00e7ee1b050b8499577073aeb2a297a1;;
+
+But in parent table `olist_marketplace`.`customers`, in index PRIMARY,
+the closest match we can find is record:
+PHYSICAL RECORD: n_fields 7; compact format; info bits 0
+ 0: len 30; hex 303662393662373839343563373639336136623138623030623362616336; asc 06b96b78945c7693a6b18b00b3bac6; (total 32 bytes);
+ 1: len 6; hex 0000000009d5; asc       ;;
+ 2: len 7; hex 81000002440dfe; asc     D  ;;
+ 3: len 30; hex 356330656230363636653863393536646232323364323062316638313036; asc 5c0eb0666e8c956db223d20b1f8106; (total 32 bytes);
+ 4: len 5; hex 3838313137; asc 88117;;
+ 5: len 8; hex 73616f206a6f7365; asc sao jose;;
+ 6: len 2; hex 5343; asc SC;;
+
+------------------------
+LATEST DETECTED DEADLOCK
+------------------------
+2026-11-05 08:00:05 0x1b40
+*** (1) TRANSACTION:
+TRANSACTION 3004, ACTIVE 47 sec starting index read
+mysql tables in use 1, locked 1
+LOCK WAIT 3 lock struct(s), heap size 1128, 2 row lock(s), undo log entries 1
+MySQL thread id 25, OS thread handle 7568, query id 716 localhost ::1 root updating
+UPDATE product_stock SET quantity = quantity - 1 WHERE product_id = @p2
+
+*** (1) HOLDS THE LOCK(S):
+RECORD LOCKS space id 30 page no 4 n bits 72 index PRIMARY of table `olist_marketplace`.`product_stock` trx id 3004 lock_mode X locks rec but not gap
+Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
+ 0: len 30; hex 303030363666343261656562396633303037353438626239643366333363; asc 00066f42aeeb9f3007548bb9d3f33c; (total 32 bytes);
+ 1: len 6; hex 000000000bbc; asc       ;;
+ 2: len 7; hex 010000013f0151; asc     ? Q;;
+ 3: len 4; hex 80000009; asc     ;;
+
+
+*** (1) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 30 page no 4 n bits 72 index PRIMARY of table `olist_marketplace`.`product_stock` trx id 3004 lock_mode X locks rec but not gap waiting
+Record lock, heap no 3 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
+ 0: len 30; hex 303030383839333065393235633431666439356562666536393566643236; asc 00088930e925c41fd95ebfe695fd26; (total 32 bytes);
+ 1: len 6; hex 000000000bbd; asc       ;;
+ 2: len 7; hex 02000000ef0f3a; asc       :;;
+ 3: len 4; hex 80000009; asc     ;;
+
+
+*** (2) TRANSACTION:
+TRANSACTION 3005, ACTIVE 39 sec starting index read
+mysql tables in use 1, locked 1
+LOCK WAIT 3 lock struct(s), heap size 1128, 2 row lock(s), undo log entries 1
+MySQL thread id 27, OS thread handle 15560, query id 717 localhost ::1 root updating
+UPDATE product_stock SET quantity = quantity - 1 WHERE product_id = @p
+
+*** (2) HOLDS THE LOCK(S):
+RECORD LOCKS space id 30 page no 4 n bits 72 index PRIMARY of table `olist_marketplace`.`product_stock` trx id 3005 lock_mode X locks rec but not gap
+Record lock, heap no 3 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
+ 0: len 30; hex 303030383839333065393235633431666439356562666536393566643236; asc 00088930e925c41fd95ebfe695fd26; (total 32 bytes);
+ 1: len 6; hex 000000000bbd; asc       ;;
+ 2: len 7; hex 02000000ef0f3a; asc       :;;
+ 3: len 4; hex 80000009; asc     ;;
+
+
+*** (2) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 30 page no 4 n bits 72 index PRIMARY of table `olist_marketplace`.`product_stock` trx id 3005 lock_mode X locks rec but not gap waiting
+Record lock, heap no 2 PHYSICAL RECORD: n_fields 4; compact format; info bits 0
+ 0: len 30; hex 303030363666343261656562396633303037353438626239643366333363; asc 00066f42aeeb9f3007548bb9d3f33c; (total 32 bytes);
+ 1: len 6; hex 000000000bbc; asc       ;;
+ 2: len 7; hex 010000013f0151; asc     ? Q;;
+ 3: len 4; hex 80000009; asc     ;;
+
+*** WE ROLL BACK TRANSACTION (2)
+------------
+TRANSACTIONS
+------------
+Trx id counter 3008
+Purge done for trx's n:o < 3008 undo n:o < 0 state: running but idle
+History list length 0
+LIST OF TRANSACTIONS FOR EACH SESSION:
+---TRANSACTION 283304168331360, not started
+0 lock struct(s), heap size 1128, 0 row lock(s)
+---TRANSACTION 283304168330584, not started
+0 lock struct(s), heap size 1128, 0 row lock(s)
+---TRANSACTION 283304168329808, not started
+0 lock struct(s), heap size 1128, 0 row lock(s)
+---TRANSACTION 283304168329032, not started
+0 lock struct(s), heap size 1128, 0 row lock(s)
+---TRANSACTION 283304168328256, not started
+0 lock struct(s), heap size 1128, 0 row lock(s)
+---TRANSACTION 283304168327480, not started
+0 lock struct(s), heap size 1128, 0 row lock(s)
+---TRANSACTION 283304168326704, not started
+0 lock struct(s), heap size 1128, 0 row lock(s)
+--------
+FILE I/O
+--------
+I/O thread 0 state: wait Windows aio (insert buffer thread)
+I/O thread 1 state: wait Windows aio (read thread)
+I/O thread 2 state: wait Windows aio (read thread)
+I/O thread 3 state: wait Windows aio (read thread)
+I/O thread 4 state: wait Windows aio (read thread)
+I/O thread 5 state: wait Windows aio (write thread)
+I/O thread 6 state: wait Windows aio (write thread)
+I/O thread 7 state: wait Windows aio (write thread)
+I/O thread 8 state: wait Windows aio (write thread)
+Pending normal aio reads: [0, 0, 0, 0] , aio writes: [0, 0, 0, 0] ,
+ ibuf aio reads:
+Pending flushes (fsync) log: 0; buffer pool: 0
+110345 OS file reads, 126698 OS file writes, 15912 OS fsyncs
+0.00 reads/s, 0 avg bytes/read, 0.00 writes/s, 0.00 fsyncs/s
+-------------------------------------
+INSERT BUFFER AND ADAPTIVE HASH INDEX
+-------------------------------------
+Ibuf: size 1, free list len 0, seg size 2, 0 merges
+merged operations:
+ insert 0, delete mark 0, delete 0
+discarded operations:
+ insert 0, delete mark 0, delete 0
+Hash table size 34679, node heap has 1 buffer(s)
+Hash table size 34679, node heap has 1 buffer(s)
+Hash table size 34679, node heap has 148 buffer(s)
+Hash table size 34679, node heap has 54 buffer(s)
+Hash table size 34679, node heap has 1 buffer(s)
+Hash table size 34679, node heap has 167 buffer(s)
+Hash table size 34679, node heap has 1 buffer(s)
+Hash table size 34679, node heap has 2 buffer(s)
+0.00 hash searches/s, 0.00 non-hash searches/s
+---
+LOG
+---
+Log capacity                 104857600
+Log capacity used            104857600
+Log sequence number          455043602
+Log buffer assigned up to    455043602
+Log buffer completed up to   455043602
+Log written up to            455043602
+Log flushed up to            455043602
+Added dirty pages up to      455043602
+Pages flushed up to          455043602
+Last checkpoint at           455043602
+Log minimum file id is       111
+Log maximum file id is       138
+65102 log i/o's done, 0.00 log i/o's/second
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total large memory allocated 0
+Dictionary memory allocated 659778
+Buffer pool size   8191
+Free buffers       1024
+Database pages     6792
+Old database pages 2487
+Modified db pages  0
+Pending reads      0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 45186, not young 5069643
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 104746, created 35887, written 45491
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+No buffer pool page gets since the last printout
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 6792, unzip_LRU len: 0
+I/O sum[0]:cur[0], unzip sum[0]:cur[0]
+--------------
+ROW OPERATIONS
+--------------
+0 queries inside InnoDB, 0 queries in queue
+0 read views open inside InnoDB
+Process ID=6360, Main thread ID=10820 , state=sleeping
+Number of rows inserted 2835310, updated 19, deleted 4, read 33531708
+0.00 inserts/s, 0.00 updates/s, 0.00 deletes/s, 0.00 reads/s
+Number of system rows inserted 561, updated 1339, deleted 222, read 10570
+0.00 inserts/s, 0.00 updates/s, 0.00 deletes/s, 0.00 reads/s
+----------------------------
+END OF INNODB MONITOR OUTPUT
+============================
+
+1 row in set (0.23 sec)
+
+mysql> UPDATE product_stock SET quantity = 10;
+Query OK, 2 rows affected (0.26 sec)
+Rows matched: 5  Changed: 2  Warnings: 0
+
+mysql> START TRANSACTION;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> UPDATE product_stock SET quantity = quantity - 1 WHERE product_id = @p;
+Query OK, 1 row affected (16.54 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> UPDATE product_stock SET quantity = quantity - 1 WHERE product_id = @p2;
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> COMMIT;
+Query OK, 0 rows affected (0.08 sec)
+
+mysql> notee

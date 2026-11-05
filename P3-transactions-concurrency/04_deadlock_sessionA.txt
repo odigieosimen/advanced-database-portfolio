@@ -1,0 +1,48 @@
+mysql> START TRANSACTION;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> UPDATE product_stock SET quantity = quantity - 1 WHERE product_id = @p;
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> UPDATE product_stock SET quantity = quantity - 1 WHERE product_id = @p2;
+Query OK, 1 row affected (29.12 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> COMMIT;
+Query OK, 0 rows affected (0.22 sec)
+
+mysql> SELECT product_id, quantity FROM product_stock ORDER BY product_id LIMIT 3;
++----------------------------------+----------+
+| product_id                       | quantity |
++----------------------------------+----------+
+| 00066f42aeeb9f3007548bb9d3f33c38 |        9 |
+| 00088930e925c41fd95ebfe695fd2655 |        9 |
+| 0009406fd7479715e4bef61dd91f2462 |       10 |
++----------------------------------+----------+
+3 rows in set (0.00 sec)
+
+mysql> START TRANSACTION;
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> UPDATE product_stock SET quantity = quantity - 1 WHERE product_id = @p;
+Query OK, 1 row affected (0.02 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> UPDATE product_stock SET quantity = quantity - 1 WHERE product_id = @p2;
+Query OK, 1 row affected (0.00 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+mysql> COMMIT;
+Query OK, 0 rows affected (0.10 sec)
+
+mysql> SELECT product_id, quantity FROM product_stock ORDER BY product_id LIMIT 2;
++----------------------------------+----------+
+| product_id                       | quantity |
++----------------------------------+----------+
+| 00066f42aeeb9f3007548bb9d3f33c38 |        8 |
+| 00088930e925c41fd95ebfe695fd2655 |        8 |
++----------------------------------+----------+
+2 rows in set (0.00 sec)
+
+mysql> notee
