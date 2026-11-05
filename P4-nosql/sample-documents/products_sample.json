@@ -1,0 +1,3 @@
+{"_id": "00066f42aeeb9f3007548bb9d3f33c38", "category": {"en": "perfumery\r", "pt": "perfumaria"}, "dimensions": {"weight_g": 300, "width_cm": 16, "height_cm": 16, "length_cm": 20}, "photos_qty": 6, "name_length": 53, "description_length": 596}
+{"_id": "00088930e925c41fd95ebfe695fd2655", "category": {"en": "auto\r", "pt": "automotivo"}, "dimensions": {"weight_g": 1225, "width_cm": 26, "height_cm": 10, "length_cm": 55}, "photos_qty": 4, "name_length": 56, "description_length": 752}
+{"_id": "0009406fd7479715e4bef61dd91f2462", "category": {"en": "bed_bath_table\r", "pt": "cama_mesa_banho"}, "dimensions": {"weight_g": 300, "width_cm": 35, "height_cm": 15, "length_cm": 45}, "photos_qty": 2, "name_length": 50, "description_length": 266}
