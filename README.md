@@ -55,4 +55,4 @@ The dataset CSVs are not committed to this repository. Follow [`data/README.md`]
 
 ## AI use declaration
 
-Complete the declaration required by the course, describing any AI tools used, how they were used, and how their output was reviewed and verified.
+AI was used responsibly throughout this project as an assitant while I owned the system end to end. OpenAI Codex assisted in organizing evidence and drafting the summary report from the assignment brief and portfolio files. Copilot was used as a coding assistant inside VS Code. Claude was used to verify and validate SQL queries for MongoDB Atlas via Compass and MySQL Workbench.  
